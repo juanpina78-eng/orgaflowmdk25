@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mondraker Organizational Chart</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+      
+      body { 
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        background: #ffffff;
+        overflow: hidden; 
+        margin: 0;
+        padding: 0;
+      }
+      
+      .node-card { 
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+      }
+      
+      .node-card:hover { 
+        transform: translateY(-4px) scale(1.02);
+        filter: drop-shadow(0 8px 16px rgba(0, 113, 185, 0.3));
+      }
+      
+      .node-card.highlighted { 
+        stroke: #0071B9;
+        stroke-width: 3;
+        filter: drop-shadow(0 0 20px rgba(0, 113, 185, 0.8));
+        animation: pulse 2s infinite;
+      }
+      
+      @keyframes pulse {
+        0%, 100% { filter: drop-shadow(0 0 20px rgba(0, 113, 185, 0.8)); }
+        50% { filter: drop-shadow(0 0 30px rgba(0, 113, 185, 1)); }
+      }
+      
+      .search-input {
+        transition: all 0.3s;
+        border: 2px solid #e2e3e4;
+        background: #ffffff;
+        color: #000000;
+      }
+      
+      .search-input:focus {
+        border-color: #0071B9;
+        box-shadow: 0 0 0 3px rgba(0, 113, 185, 0.1);
+        outline: none;
+      }
+      
+      .search-input::placeholder {
+        color: #999;
+      }
+      
+      #modal { 
+        backdrop-filter: blur(10px);
+        background: rgba(255, 255, 255, 0.95);
+      }
+      
+      .fade-in { 
+        animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      
+      @keyframes fadeIn { 
+        from { opacity: 0; transform: translateY(-20px) scale(0.95); } 
+        to { opacity: 1; transform: translateY(0) scale(1); } 
+      }
+      
+      .btn-mondraker {
+        background: #0071B9;
+        transition: all 0.3s;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      
+      .btn-mondraker:hover {
+        background: #005a94;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(0, 113, 185, 0.4);
+      }
+      
+      .btn-secondary {
+        background: #e2e3e4;
+        color: #000000;
+        transition: all 0.3s;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      
+      .btn-secondary:hover {
+        background: #d0d1d2;
+        transform: translateY(-1px);
+      }
+      
+      .btn-export {
+        background: #ffffff;
+        border: 2px solid #0071B9;
+        color: #0071B9;
+        transition: all 0.3s;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      
+      .btn-export:hover {
+        background: #0071B9;
+        color: #ffffff;
+        transform: translateY(-2px);
+      }
+      
+      .logo-mondraker {
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        color: #000000;
+      }
+      
+      .loading {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(0, 113, 185, 0.3);
+        border-radius: 50%;
+        border-top-color: #0071B9;
+        animation: spin 1s ease-in-out infinite;
+      }
+      
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      .dropdown {
+        position: relative;
+        display: inline-block;
+      }
+
+      .dropdown-content {
+        display: none;
+        position: absolute;
+        background-color: #ffffff;
+        min-width: 200px;
+        box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.15);
+        z-index: 1;
+        border: 2px solid #e2e3e4;
+        border-radius: 8px;
+        margin-top: 8px;
+      }
+
+      .dropdown-content button {
+        color: #000000;
+        padding: 12px 16px;
+        text-decoration: none;
+        display: block;
+        width: 100%;
+        text-align: left;
+        border: none;
+        background: none;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.2s;
+      }
+
+      .dropdown-content button:hover {
+        background-color: #0071B9;
+        color: #ffffff;
+      }
+
+      .dropdown-content.show {
+        display: block;
+      }
+
+      #exportingOverlay {
+        backdrop-filter: blur(5px);
+        background: rgba(255, 255, 255, 0.9);
+      }
+    </style>
+</head>
+<body class="w-screen h-screen">
+    <!-- Overlay de exportación -->
+    <div id="exportingOverlay" class="hidden fixed inset-0 z-[100] flex items-center justify-center">
+      <div class="bg-white border-2 border-blue-500 rounded-2xl p-8 text-center shadow-2xl">
+        <div class="loading mx-auto mb-4" style="width: 40px; height: 40px; border-width: 4px;"></div>
+        <p class="text-black text-lg font-bold">Exporting chart...</p>
+        <p class="text-gray-600 text-sm mt-2">Please wait a moment</p>
+      </div>
+    </div>
+
+    <!-- Panel de Control Superior -->
+    <div class="absolute top-0 left-0 right-0 z-50 bg-white border-b-2 border-gray-200 fade-in shadow-sm">
+      <div class="max-w-7xl mx-auto px-6 py-4">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-4">
+            <h1 class="logo-mondraker text-2xl">MONDRAKER</h1>
+            <span class="text-gray-500 text-sm font-light">Organizational Chart</span>
+          </div>
+          <div class="flex items-center gap-4">
+            <div class="text-gray-600 text-sm">
+              <span id="employeeCount"><span class="loading"></span> Loading data...</span>
+            </div>
+            
+            <!-- Botón de Exportar -->
+            <div class="dropdown">
+              <button onclick="toggleDropdown(event)" class="btn-export px-5 py-3 rounded-lg text-xs flex items-center gap-2">
+                📥 EXPORT
+                <span class="text-xs">▼</span>
+              </button>
+              <div id="exportDropdown" class="dropdown-content">
+                <button onclick="exportToPNG()">📷 Export as PNG</button>
+                <button onclick="exportToPDF()">📄 Export as PDF</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="flex flex-wrap gap-3 items-center">
+          <!-- Búsqueda -->
+          <div class="flex-1 min-w-72">
+            <input 
+              type="text" 
+              id="searchInput" 
+              class="search-input w-full px-4 py-3 rounded-lg text-sm"
+              placeholder="🔍 Search by name, position or department..."
+              oninput="searchEmployee(this.value)"
+            >
+          </div>
+          
+          <!-- Filtros -->
+          <div class="flex gap-2">
+            <select id="departmentFilter" class="search-input px-4 py-3 rounded-lg text-sm font-semibold cursor-pointer" onchange="applyFilters()">
+              <option value="">ALL DEPARTMENTS</option>
+            </select>
+            
+            <select id="typeFilter" class="search-input px-4 py-3 rounded-lg text-sm font-semibold cursor-pointer" onchange="applyFilters()">
+              <option value="">ALL TYPES</option>
+              <option value="INTERNAL">INTERNAL</option>
+              <option value="EXTERNAL">EXTERNAL</option>
+            </select>
+            
+            <button onclick="resetFilters()" class="btn-secondary px-5 py-3 rounded-lg text-xs">
+              ↺ RESET
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Área del organigrama -->
+    <div id="chart" class="w-full h-full"></div>
+
+    <!-- Modal de detalles del empleado -->
+    <div id="modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" onclick="closeModal()">
+      <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full p-10 fade-in border-2 border-gray-200" onclick="event.stopPropagation()">
+        <div class="flex items-start justify-between mb-6">
+          <div class="flex-1">
+            <div class="flex items-center gap-3 mb-2">
+              <div id="modalAvatar" class="w-20 h-20 rounded-full flex items-center justify-center text-white text-3xl font-bold" style="background: linear-gradient(135deg, #0071B9 0%, #005a94 100%);"></div>
+              <div>
+                <h2 id="modalName" class="text-3xl font-bold text-black mb-1"></h2>
+                <p id="modalPosition" class="text-lg text-gray-600 font-medium"></p>
+              </div>
+            </div>
+          </div>
+          <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-3xl leading-none transition-colors">&times;</button>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-6">
+          <div class="space-y-4">
+            <div>
+              <p class="text-xs text-gray-500 font-bold uppercase mb-2">Department</p>
+              <p id="modalDepartment" class="text-base text-black font-semibold"></p>
+            </div>
+            
+            <div>
+              <p class="text-xs text-gray-500 font-bold uppercase mb-2">Type</p>
+              <p id="modalType" class="text-base font-semibold"></p>
+            </div>
+          </div>
+          
+          <div class="space-y-4">
+            <div>
+              <p class="text-xs text-gray-500 font-bold uppercase mb-2">Reports To</p>
+              <p id="modalManager" class="text-base text-black font-semibold"></p>
+            </div>
+            
+            <div>
+              <p class="text-xs text-gray-500 font-bold uppercase mb-2">Level</p>
+              <p id="modalLevel" class="text-base text-black font-semibold"></p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="mt-6 pt-6 border-t-2 border-gray-100">
+          <button onclick="closeModal()" class="btn-mondraker w-full py-4 rounded-xl text-sm">
+            CLOSE
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Librerías -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <script>
+      // ========================================
+      // CONFIGURACIÓN DE SEGURIDAD
+      // ========================================
+      const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzm-Z_0bCQvt4GzTnXHo6gLoY4saRSKml5JKG2KE7ACK6hBc67bKV7b34JSE2xMSig/exec';
+      const SECRET_TOKEN = 'Mondraker2024_TuTokenSecreto_XYZ789';
+      
+      // ========================================
+      // CONSTANTES Y VARIABLES GLOBALES
+      // ========================================
+      const CARD_WIDTH = 240;
+      const CARD_HEIGHT = 120;
+      const LEVEL_HEIGHT = 200;
+      const SIBLING_MARGIN = 20;
+      
+      let svg, g, zoom;
+      let allEmployees = [];
+      let hierarchyData = null;
+      let currentFilters = {
+        department: '',
+        type: '',
+        search: ''
+      };
+
+      // ========================================
+      // FUNCIÓN PRINCIPAL: CARGAR DATOS
+      // ========================================
+      async function loadData() {
+        try {
+          console.log('🔒 Loading data securely from Google Apps Script...');
+          
+          // Construir URL con token de seguridad
+          const urlWithToken = `${SCRIPT_URL}?token=${encodeURIComponent(SECRET_TOKEN)}`;
+          
+          // Hacer la petición segura
+          const response = await fetch(urlWithToken);
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          
+          // Verificar si hay error de autenticación
+          if (data.error) {
+            throw new Error(data.error);
+          }
+          
+          console.log('✅ Secure data loaded successfully:', data.length, 'employees');
+          
+          allEmployees = data;
+          processData(data);
+          
+        } catch (error) {
+          console.error('❌ Error loading data:', error);
+          document.getElementById('employeeCount').innerHTML = 
+            '<span class="text-red-500">⚠️ Error loading data. Please check your connection.</span>';
+        }
+      }
+
+      // ========================================
+      // PROCESAR Y PREPARAR DATOS
+      // ========================================
+      function processData(data) {
+        console.log('📊 Processing employee data...');
+        
+        // Crear mapa de empleados por ID
+        const employeeMap = {};
+        data.forEach(emp => {
+          employeeMap[emp.id] = {
+            ...emp,
+            children: []
+          };
+        });
+        
+        // Construir jerarquía
+        let root = null;
+        data.forEach(emp => {
+          if (emp.manager_id && employeeMap[emp.manager_id]) {
+            employeeMap[emp.manager_id].children.push(employeeMap[emp.id]);
+          } else {
+            root = employeeMap[emp.id];
+          }
+        });
+        
+        hierarchyData = d3.hierarchy(root);
+        
+        // Poblar filtros
+        populateFilters(data);
+        
+        // Actualizar contador
+        document.getElementById('employeeCount').innerHTML = 
+          `<strong>${data.length}</strong> employees`;
+        
+        // Renderizar organigrama
+        renderChart(hierarchyData);
+      }
+
+      // ========================================
+      // POBLAR FILTROS DINÁMICOS
+      // ========================================
+      function populateFilters(data) {
+        const departments = [...new Set(data.map(e => e.department))].sort();
+        const deptSelect = document.getElementById('departmentFilter');
+        
+        departments.forEach(dept => {
+          const option = document.createElement('option');
+          option.value = dept;
+          option.textContent = dept.toUpperCase();
+          deptSelect.appendChild(option);
+        });
+      }
+
+      // ========================================
+      // RENDERIZAR ORGANIGRAMA
+      // ========================================
+      function renderChart(root) {
+        console.log('🎨 Rendering organizational chart...');
+        
+        const container = document.getElementById('chart');
+        container.innerHTML = '';
+        
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        
+        svg = d3.select('#chart')
+          .append('svg')
+          .attr('width', width)
+          .attr('height', height)
+          .style('background', '#ffffff');
+        
+        zoom = d3.zoom()
+          .scaleExtent([0.1, 3])
+          .on('zoom', (event) => {
+            g.attr('transform', event.transform);
+          });
+        
+        svg.call(zoom);
+        
+        g = svg.append('g');
+        
+        // Calcular posiciones
+        const treeLayout = d3.tree()
+          .nodeSize([CARD_WIDTH + SIBLING_MARGIN, LEVEL_HEIGHT]);
+        
+        treeLayout(root);
+        
+        // Centrar vista inicial
+        const initialTransform = d3.zoomIdentity
+          .translate(width / 2, 100)
+          .scale(0.8);
+        
+        svg.call(zoom.transform, initialTransform);
+        
+        // Dibujar conexiones
+        drawConnections(root);
+        
+        // Dibujar nodos
+        drawNodes(root);
+      }
+
+      // ========================================
+      // DIBUJAR CONEXIONES
+      // ========================================
+      function drawConnections(root) {
+        const links = root.links();
+        
+        g.selectAll('.link')
+          .data(links)
+          .enter()
+          .append('path')
+          .attr('class', 'link')
+          .attr('d', d => {
+            return `M${d.source.x},${d.source.y + CARD_HEIGHT/2}
+                    L${d.source.x},${d.source.y + LEVEL_HEIGHT/2}
+                    L${d.target.x},${d.source.y + LEVEL_HEIGHT/2}
+                    L${d.target.x},${d.target.y - CARD_HEIGHT/2}`;
+          })
+          .attr('fill', 'none')
+          .attr('stroke', '#e2e3e4')
+          .attr('stroke-width', 2);
+      }
+
+      // ========================================
+      // DIBUJAR NODOS (TARJETAS DE EMPLEADOS)
+      // ========================================
+      function drawNodes(root) {
+        const nodes = root.descendants();
+        
+        const nodeGroups = g.selectAll('.node')
+          .data(nodes)
+          .enter()
+          .append('g')
+          .attr('class', 'node')
+          .attr('transform', d => `translate(${d.x},${d.y})`)
+          .on('click', (event, d) => showModal(d.data));
+        
+        // Tarjeta de fondo
+        nodeGroups.append('rect')
+          .attr('class', 'node-card')
+          .attr('x', -CARD_WIDTH/2)
+          .attr('y', -CARD_HEIGHT/2)
+          .attr('width', CARD_WIDTH)
+          .attr('height', CARD_HEIGHT)
+          .attr('rx', 12)
+          .attr('fill', '#ffffff')
+          .attr('stroke', '#e2e3e4')
+          .attr('stroke-width', 2);
+        
+        // Barra superior de color
+        nodeGroups.append('rect')
+          .attr('x', -CARD_WIDTH/2)
+          .attr('y', -CARD_HEIGHT/2)
+          .attr('width', CARD_WIDTH)
+          .attr('height', 8)
+          .attr('rx', 12)
+          .attr('fill', d => d.data.type === 'INTERNAL' ? '#0071B9' : '#e2e3e4');
+        
+        // Avatar circular
+        nodeGroups.append('circle')
+          .attr('cx', 0)
+          .attr('cy', -CARD_HEIGHT/2 + 35)
+          .attr('r', 22)
+          .attr('fill', d => d.data.type === 'INTERNAL' ? '#0071B9' : '#999999');
+        
+        // Iniciales en avatar
+        nodeGroups.append('text')
+          .attr('x', 0)
+          .attr('y', -CARD_HEIGHT/2 + 40)
+          .attr('text-anchor', 'middle')
+          .attr('fill', '#ffffff')
+          .attr('font-size', '14px')
+          .attr('font-weight', '700')
+          .text(d => {
+            const names = d.data.name.split(' ');
+            return names.length > 1 
+              ? names[0][0] + names[1][0] 
+              : names[0][0];
+          });
+        
+        // Nombre
+        nodeGroups.append('text')
+          .attr('x', 0)
+          .attr('y', -CARD_HEIGHT/2 + 68)
+          .attr('text-anchor', 'middle')
+          .attr('fill', '#000000')
+          .attr('font-size', '13px')
+          .attr('font-weight', '700')
+          .text(d => {
+            const name = d.data.name;
+            return name.length > 20 ? name.substring(0, 20) + '...' : name;
+          });
+        
+        // Posición
+        nodeGroups.append('text')
+          .attr('x', 0)
+          .attr('y', -CARD_HEIGHT/2 + 88)
+          .attr('text-anchor', 'middle')
+          .attr('fill', '#666666')
+          .attr('font-size', '11px')
+          .attr('font-weight', '500')
+          .text(d => {
+            const position = d.data.position;
+            return position.length > 24 ? position.substring(0, 24) + '...' : position;
+          });
+        
+        // Departamento
+        nodeGroups.append('text')
+          .attr('x', 0)
+          .attr('y', -CARD_HEIGHT/2 + 103)
+          .attr('text-anchor', 'middle')
+          .attr('fill', '#999999')
+          .attr('font-size', '10px')
+          .attr('font-weight', '600')
+          .text(d => d.data.department.toUpperCase());
+      }
+
+      // ========================================
+      // MODAL DE DETALLES
+      // ========================================
+      function showModal(employee) {
+        document.getElementById('modalAvatar').textContent = 
+          employee.name.split(' ').map(n => n[0]).join('');
+        document.getElementById('modalName').textContent = employee.name;
+        document.getElementById('modalPosition').textContent = employee.position;
+        document.getElementById('modalDepartment').textContent = employee.department;
+        document.getElementById('modalType').textContent = employee.type;
+        document.getElementById('modalType').className = 
+          employee.type === 'INTERNAL' ? 'text-base font-semibold text-blue-600' : 'text-base font-semibold text-gray-600';
+        
+        const manager = allEmployees.find(e => e.id === employee.manager_id);
+        document.getElementById('modalManager').textContent = 
+          manager ? manager.name : 'CEO';
+        
+        document.getElementById('modalLevel').textContent = `Level ${employee.level}`;
+        document.getElementById('modal').classList.remove('hidden');
+      }
+
+      function closeModal() {
+        document.getElementById('modal').classList.add('hidden');
+      }
+
+      // ========================================
+      // BÚSQUEDA Y FILTROS
+      // ========================================
+      function searchEmployee(query) {
+        currentFilters.search = query.toLowerCase();
+        applyFilters();
+      }
+
+      function applyFilters() {
+        currentFilters.department = document.getElementById('departmentFilter').value;
+        currentFilters.type = document.getElementById('typeFilter').value;
+        
+        const filtered = allEmployees.filter(emp => {
+          const matchDept = !currentFilters.department || emp.department === currentFilters.department;
+          const matchType = !currentFilters.type || emp.type === currentFilters.type;
+          const matchSearch = !currentFilters.search || 
+            emp.name.toLowerCase().includes(currentFilters.search) ||
+            emp.position.toLowerCase().includes(currentFilters.search) ||
+            emp.department.toLowerCase().includes(currentFilters.search);
+          
+          return matchDept && matchType && matchSearch;
+        });
+        
+        // Destacar nodos filtrados
+        g.selectAll('.node')
+          .style('opacity', d => {
+            const emp = d.data;
+            const isMatch = filtered.some(f => f.id === emp.id);
+            return isMatch ? 1 : 0.2;
+          });
+        
+        g.selectAll('.link')
+          .style('opacity', d => {
+            const sourceMatch = filtered.some(f => f.id === d.source.data.id);
+            const targetMatch = filtered.some(f => f.id === d.target.data.id);
+            return sourceMatch && targetMatch ? 1 : 0.1;
+          });
+      }
+
+      function resetFilters() {
+        document.getElementById('departmentFilter').value = '';
+        document.getElementById('typeFilter').value = '';
+        document.getElementById('searchInput').value = '';
+        currentFilters = { department: '', type: '', search: '' };
+        
+        g.selectAll('.node').style('opacity', 1);
+        g.selectAll('.link').style('opacity', 1);
+      }
+
+      // ========================================
+      // EXPORTACIÓN
+      // ========================================
+      function toggleDropdown(event) {
+        event.stopPropagation();
+        document.getElementById('exportDropdown').classList.toggle('show');
+      }
+
+      window.onclick = function(event) {
+        if (!event.target.matches('.btn-export') && !event.target.matches('.btn-export *')) {
+          const dropdowns = document.getElementsByClassName('dropdown-content');
+          for (let i = 0; i < dropdowns.length; i++) {
+            dropdowns[i].classList.remove('show');
+          }
+        }
+      }
+
+      async function exportToPNG() {
+        try {
+          document.getElementById('exportDropdown').classList.remove('show');
+          document.getElementById('exportingOverlay').classList.remove('hidden');
+          
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          const visibleNodes = g.selectAll('g').filter(function() {
+            return this.style.display !== 'none';
+          });
+          
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+          
+          visibleNodes.each(function() {
+            const bbox = this.getBBox();
+            const transform = this.getAttribute('transform');
+            let x = 0, y = 0;
+            
+            if (transform) {
+              const match = transform.match(/translate\(([^,]+),([^)]+)\)/);
+              if (match) {
+                x = parseFloat(match[1]);
+                y = parseFloat(match[2]);
+              }
+            }
+            
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y - CARD_HEIGHT/2);
+            maxX = Math.max(maxX, x + CARD_WIDTH);
+            maxY = Math.max(maxY, y + CARD_HEIGHT/2);
+          });
+          
+          const margin = 100;
+          minX -= margin;
+          minY -= margin;
+          maxX += margin;
+          maxY += margin;
+          
+          const exportWidth = maxX - minX;
+          const exportHeight = maxY - minY;
+          
+          const tempContainer = document.createElement('div');
+          tempContainer.style.position = 'absolute';
+          tempContainer.style.left = '-9999px';
+          tempContainer.style.width = '1920px';
+          tempContainer.style.height = '1080px';
+          tempContainer.style.backgroundColor = '#ffffff';
+          document.body.appendChild(tempContainer);
+          
+          const tempSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          tempSvg.setAttribute('width', '1920');
+          tempSvg.setAttribute('height', '1080');
+          tempSvg.setAttribute('viewBox', `${minX} ${minY} ${exportWidth} ${exportHeight}`);
+          tempSvg.style.backgroundColor = '#ffffff';
+          
+          const styleElement = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+          styleElement.textContent = `
+            text { font-family: 'Inter', sans-serif; }
+            .node-card { cursor: pointer; }
+          `;
+          tempSvg.appendChild(styleElement);
+          
+          const clonedG = g.node().cloneNode(true);
+          tempSvg.appendChild(clonedG);
+          
+          tempContainer.appendChild(tempSvg);
+          
+          await new Promise(resolve => setTimeout(resolve, 300));
+          
+          const canvas = await html2canvas(tempContainer, {
+            backgroundColor: '#ffffff',
+            scale: 2,
+            logging: false,
+            width: 1920,
+            height: 1080
+          });
+          
+          document.body.removeChild(tempContainer);
+          
+          const link = document.createElement('a');
+          const timestamp = new Date().toISOString().split('T')[0];
+          link.download = `Mondraker_Organizational_Chart_${timestamp}.png`;
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+          
+          document.getElementById('exportingOverlay').classList.add('hidden');
+        } catch (error) {
+          console.error('Error exporting PNG:', error);
+          alert('Error exporting chart. Please try again.');
+          document.getElementById('exportingOverlay').classList.add('hidden');
+        }
+      }
+
+      async function exportToPDF() {
+        try {
+          document.getElementById('exportDropdown').classList.remove('show');
+          document.getElementById('exportingOverlay').classList.remove('hidden');
+          
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          const visibleNodes = g.selectAll('g').filter(function() {
+            return this.style.display !== 'none';
+          });
+          
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+          
+          visibleNodes.each(function() {
+            const bbox = this.getBBox();
+            const transform = this.getAttribute('transform');
+            let x = 0, y = 0;
+            
+            if (transform) {
+              const match = transform.match(/translate\(([^,]+),([^)]+)\)/);
+              if (match) {
+                x = parseFloat(match[1]);
+                y = parseFloat(match[2]);
+              }
+            }
+            
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y - CARD_HEIGHT/2);
+            maxX = Math.max(maxX, x + CARD_WIDTH);
+            maxY = Math.max(maxY, y + CARD_HEIGHT/2);
+          });
+          
+          const margin = 100;
+          minX -= margin;
+          minY -= margin;
+          maxX += margin;
+          maxY += margin;
+          
+          const exportWidth = maxX - minX;
+          const exportHeight = maxY - minY;
+          
+          const tempContainer = document.createElement('div');
+          tempContainer.style.position = 'absolute';
+          tempContainer.style.left = '-9999px';
+          tempContainer.style.width = '1920px';
+          tempContainer.style.height = '1080px';
+          tempContainer.style.backgroundColor = '#ffffff';
+          document.body.appendChild(tempContainer);
+          
+          const tempSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          tempSvg.setAttribute('width', '1920');
+          tempSvg.setAttribute('height', '1080');
+          tempSvg.setAttribute('viewBox', `${minX} ${minY} ${exportWidth} ${exportHeight}`);
+          tempSvg.style.backgroundColor = '#ffffff';
+          
+          const styleElement = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+          styleElement.textContent = `
+            text { font-family: 'Inter', sans-serif; }
+            .node-card { cursor: pointer; }
+          `;
+          tempSvg.appendChild(styleElement);
+          
+          const clonedG = g.node().cloneNode(true);
+          tempSvg.appendChild(clonedG);
+          
+          tempContainer.appendChild(tempSvg);
+          
+          await new Promise(resolve => setTimeout(resolve, 300));
+          
+          const canvas = await html2canvas(tempContainer, {
+            backgroundColor: '#ffffff',
+            scale: 2,
+            logging: false,
+            width: 1920,
+            height: 1080
+          });
+          
+          document.body.removeChild(tempContainer);
+          
+          const imgData = canvas.toDataURL('image/png');
+          const { jsPDF } = window.jspdf;
+          
+          const aspectRatio = exportWidth / exportHeight;
+          const orientation = aspectRatio > 1.3 ? 'landscape' : 'portrait';
+          
+          const pdf = new jsPDF({
+            orientation: orientation,
+            unit: 'mm',
+            format: 'a3'
+          });
+          
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = pdf.internal.pageSize.getHeight();
+          
+          let imgWidth = pdfWidth - 20;
+          let imgHeight = (canvas.height / canvas.width) * imgWidth;
+          
+          if (imgHeight > pdfHeight - 20) {
+            imgHeight = pdfHeight - 20;
+            imgWidth = (canvas.width / canvas.height) * imgHeight;
+          }
+          
+          const x = (pdfWidth - imgWidth) / 2;
+          const y = (pdfHeight - imgHeight) / 2;
+          
+          pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+          
+          const timestamp = new Date().toISOString().split('T')[0];
+          pdf.save(`Mondraker_Organizational_Chart_${timestamp}.pdf`);
+          
+          document.getElementById('exportingOverlay').classList.add('hidden');
+        } catch (error) {
+          console.error('Error exporting PDF:', error);
+          alert('Error exporting chart. Please try again.');
+          document.getElementById('exportingOverlay').classList.add('hidden');
+        }
+      }
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeModal();
+      });
+
+      // ========================================
+      // INICIALIZACIÓN
+      // ========================================
+      function initializeApp() {
+        console.log('🚀 Starting Mondraker Organizational Chart (Secure Mode)...');
+        
+        if (typeof d3 === 'undefined') {
+          console.error('❌ D3 is not available');
+          document.getElementById('employeeCount').innerHTML = 
+            '<span class="text-red-500">⚠️ Error: D3 library not loaded</span>';
+          return;
+        }
+        
+        if (typeof html2canvas === 'undefined') {
+          console.warn('⚠️ html2canvas not available - Export to PNG will not work');
+        }
+        
+        if (typeof window.jspdf === 'undefined') {
+          console.warn('⚠️ jsPDF not available - Export to PDF will not work');
+        }
+        
+        loadData();
+      }
+
+      if (typeof d3 !== 'undefined' && typeof html2canvas !== 'undefined' && typeof window.jspdf !== 'undefined') {
+        console.log('✅ Libraries already loaded, initializing immediately');
+        initializeApp();
+      }
+    </script>
+</body>
+</html>  
